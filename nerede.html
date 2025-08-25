@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>📍 Burası Nerede?</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      height: 100vh;
+      background: #f0f4f8;
+    }
+
+    #sidebar {
+      width: 30%;
+      background: #ffffff;
+      padding: 30px;
+      box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+    }
+
+    #sidebar h2 {
+      margin-bottom: 20px;
+      color: #2c3e50;
+      font-size: 24px;
+    }
+
+    input[type="file"] {
+      margin-bottom: 15px;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      background: #2ecc71;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    button:hover {
+      background: #27ae60;
+    }
+
+    #result {
+      margin-top: 25px;
+      background: #ecf0f1;
+      padding: 15px;
+      border-radius: 8px;
+      color: #34495e;
+      font-size: 16px;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+
+    #map {
+      flex: 1;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h2>📸 Tabela Tanıma Sistemi</h2>
+  <input type="file" id="imageInput" accept="image/*">
+  <button onclick="uploadImage()">🔍 Konumu Bul</button>
+  <div id="result">📄 Yüklediğiniz görselin sonucu burada görünecek...</div>
+</div>
+
+<div id="map"></div>
+
+<script>
+  let map, directionsService, directionsRenderer, userLocation;
+
+  function initMap() {
+    map = new google.maps.Map(document.getElementById("map"), {
+      zoom: 13,
+      center: { lat: 39.92, lng: 32.85 },
+    });
+
+    directionsService = new google.maps.DirectionsService();
+    directionsRenderer = new google.maps.DirectionsRenderer();
+    directionsRenderer.setMap(map);
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(pos => {
+        userLocation = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude
+        };
+        map.setCenter(userLocation);
+
+        new google.maps.Marker({
+          position: userLocation,
+          map,
+          title: "📍 Şu Anki Konumunuz"
+        });
+      }, () => alert("⚠️ Konum alınamadı!"));
+    }
+  }
+
+  async function uploadImage() {
+    const file = document.getElementById("imageInput").files[0];
+    if (!file) return alert("📂 Lütfen bir görsel seçin!");
+
+    const formData = new FormData();
+    formData.append("image", file);
+    document.getElementById("result").innerText = "⏳ Görsel işleniyor...";
+
+    try {
+      const res = await fetch("http://localhost:5000/api/nerede", {
+        method: "POST",
+        body: formData
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        document.getElementById("result").innerText = "❌ Sunucu Hatası: " + errorText;
+        return;
+      }
+
+      const data = await res.json();
+      const hedefKonum = { lat: data.lat, lng: data.lng };
+
+      document.getElementById("result").innerHTML = `
+        📌 <strong>Okunan Yazı:</strong> ${data.text}<br>
+        🏷️ <strong>Yer:</strong> ${data.place_name || "Bilinmiyor"}<br>
+        📍 <strong>Adres:</strong> ${data.address || "Adres bulunamadı"}
+      `;
+
+      directionsService.route({
+        origin: userLocation,
+        destination: hedefKonum,
+        travelMode: google.maps.TravelMode.DRIVING
+      }, (result, status) => {
+        if (status === "OK") {
+          directionsRenderer.setDirections(result);
+        } else {
+          alert("🚧 Rota çizilemedi: " + status);
+        }
+      });
+    } catch (err) {
+      document.getElementById("result").innerText = "❌ Ağ Hatası: " + err.message;
+      console.error(err);
+    }
+  }
+</script>
+
+<script async defer
+  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDppQCusNzyEVBq4mgINSwQuu6gXjRQlwI&callback=initMap">
+</script>
+
+</body>
+</html>

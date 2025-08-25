@@ -1,0 +1,14 @@
+{
+    "name": "gezen-postaci",
+    "version": "1.0.0",
+    "description": "AI Destekli Yol ve Ücret Optimizasyon Sistemi",
+    "main": "server.js",
+    "scripts": {
+      "start": "node server.js"
+    },
+    "dependencies": {
+      "express": "^4.18.2",
+      "csv-parser": "^3.0.0",
+      "fs": "^0.0.1-security"
+    }
+  }

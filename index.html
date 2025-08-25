@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Akıllı Rota Asistanı</title>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDppQCusNzyEVBq4mgINSwQuu6gXjRQlwI&libraries=places"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(to bottom, #f4f7f9, #d6e4f0);
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 3rem auto;
+            display: flex;
+            gap: 2rem;
+        }
+
+        .form-box {
+            flex: 2;
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .info-box {
+            flex: 1;
+            background: #ffffffcc;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: #2c3e50;
+        }
+
+        label, button {
+            display: block;
+            margin-top: 1rem;
+            font-weight: bold;
+        }
+
+        select, input[type="text"] {
+            width: 100%;
+            padding: 0.6rem;
+            margin-top: 0.5rem;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        button {
+            background-color: #3498db;
+            color: white;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        #stops-container input {
+            margin-bottom: 0.5rem;
+        }
+
+        ul {
+            padding-left: 1.2rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    
+<button onclick="window.location.href='nerede.html'" style="padding: 10px 20px; font-size: 16px;">
+    📍 Burası Nerede?
+  </button>
+  
+    <div class="container">
+        <div class="form-box">
+            <h1>Akıllı Rota Asistanı</h1>
+            <label>
+                Başlangıç Konumu:
+                <select id="location-type">
+                    <option value="manual">Konum gir</option>
+                    <option value="current">Güncel konumu kullan</option>
+                </select>
+            </label>
+            <input type="text" id="start" placeholder="Başlangıç konumu girin" />
+
+            <label>Ara Duraklar:</label>
+            <div id="stops-container">
+                <input type="text" class="stop" placeholder="Durak 1" />
+            </div>
+            <button onclick="addStop()">+ Durak Ekle</button>
+
+            <label>Bitiş Konumu:</label>
+            <input type="text" id="end" placeholder="Bitiş konumu girin" />
+
+            <label>Araç Sınıfı:</label>
+            <select id="vehicle-class">
+                <option value="1">1 - Otomobil</option>
+                <option value="2">2 - Minibüs</option>
+                <option value="3">3 - Kamyonet</option>
+                <option value="4">4 - Kamyon</option>
+                <option value="5">5 - Otobüs</option>
+                <option value="6">6 - Motosiklet</option>
+            </select>
+
+            <button onclick="calculateRoute()">Kısa Yolu Göster</button>
+        </div>
+
+        <div class="info-box">
+            <h3>Araç Sınıfları</h3>
+            <ul>
+                <li><strong>1:</strong> Otomobil (ortalama <strong>2.90 ₺/km</strong>)</li>
+<li><strong>2:</strong> Minibüs (ortalama <strong>3.87 ₺/km</strong>)</li>
+<li><strong>3:</strong> Kamyonet (ortalama <strong>4.84 ₺/km</strong>)</li>
+<li><strong>4:</strong> Kamyon (ortalama <strong>7.26 ₺/km</strong>)</li>
+<li><strong>5:</strong> Otobüs (ortalama <strong>5.82 ₺/km</strong>)</li>
+<li><strong>6:</strong> Motosiklet (ortalama <strong>1.45 ₺/km</strong>)</li>
+
+            </ul>
+            <p>Seçilen araç tipine göre tahmini yakıt maliyeti rota sonunda gösterilecektir.</p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('location-type').addEventListener('change', function () {
+            if (this.value === 'current') {
+                navigator.geolocation.getCurrentPosition((pos) => {
+                    const { latitude, longitude } = pos.coords;
+                    document.getElementById('start').value = `${latitude}, ${longitude}`;
+                });
+            } else {
+                document.getElementById('start').value = '';
+            }
+        });
+
+        function addStop() {
+            const container = document.getElementById('stops-container');
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.placeholder = `Durak ${container.children.length + 1}`;
+            input.classList.add('stop');
+            container.appendChild(input);
+
+            const options = { componentRestrictions: { country: 'tr' } };
+            new google.maps.places.Autocomplete(input, options);
+        }
+
+        function initAutocomplete() {
+            const options = { componentRestrictions: { country: 'tr' } };
+
+            const startInput = document.getElementById('start');
+            const endInput = document.getElementById('end');
+            const stopInputs = document.getElementsByClassName('stop');
+
+            if (startInput) new google.maps.places.Autocomplete(startInput, options);
+            if (endInput) new google.maps.places.Autocomplete(endInput, options);
+            for (let input of stopInputs) {
+                new google.maps.places.Autocomplete(input, options);
+            }
+        }
+
+        function calculateRoute() {
+            const start = document.getElementById('start').value;
+            const end = document.getElementById('end').value;
+            const vehicle = document.getElementById('vehicle-class').value;
+            const stops = Array.from(document.getElementsByClassName('stop'))
+                                .map(input => input.value)
+                                .filter(v => v.trim() !== '');
+
+            const query = new URLSearchParams({ start, end, vehicle });
+            stops.forEach((s, i) => query.append(`stop${i + 1}`, s));
+            window.location.href = `map.html?${query.toString()}`;
+        }
+
+        window.onload = initAutocomplete;
+    </script>
+</body>
+</html>
